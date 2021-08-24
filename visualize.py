@@ -1,11 +1,20 @@
 import streamlit as st
+from PIL import Image
 import cv2
 import random
 import numpy as np
 import pandas as pd
 from pathlib import Path
 import glob
-from scripts.generate_masks import make_mask
+from src import get_mask, get_labels
+from vis_utils import juxtapose
+
+img_dir = "./2021-08-10-Examples"
+
+# at venv/lib/python3.9/site-packages/streamlit/static
+STREAMLIT_STATIC_PATH = (
+    Path(st.__path__[0]) / "static"
+)  
 
 known_classes = ["Internal graining", "Surface graining", "Chip", "Bruise", "Twinning wisp", "Needle", "Pinpoint", "Feather", "Cloud", "Crystal"]
 
@@ -43,53 +52,71 @@ random.seed(42)
 palette = [(random.randint(200,255), random.randint(200,255), random.randint(200,255)) for i in range(len(classes_id))]
 
 # title
-st.title('Mask Example')
+st.title('Diamond Example')
 
-# select diamond
+# filter
+options = st.multiselect(
+    'Filter by',
+    classes.values()
+)
+
 filenames = [file.split('/')[-2] for file in glob.glob("./2021-08-10-Examples/*/Darkfield_EF.jpg")]
 
-diamond = st.selectbox(
-    'Choose a Diamond',
-    filenames)
-
-# take img and masks
-img_dir = "./2021-08-10-Examples"
-ori     = cv2.imread(img_dir + '/' + diamond + '/' + "Darkfield_EF.jpg")
-mask    = make_mask(Path(img_dir + '/' + diamond), classes_id)
-
-# sidebar
-st.sidebar.title("Masks")
-
-ag = st.sidebar.checkbox("img", value=True)
-if ag == True:
-    img = ori
+filter_filenames = []
+if len(options) > 0:
+    for filename in filenames:
+        ex = True
+        labels = get_labels(Path(img_dir + '/' + filename), classes)
+        for val in options:
+            if val not in labels:
+                ex = False
+        if ex: filter_filenames.append(filename)
 else:
-    img = np.zeros(ori.shape, dtype=np.uint8)
-    
-ag = st.sidebar.checkbox("svg", value=True)
-if ag == True:
-    svg  = cv2.imread(img_dir + '/' + diamond + '/' + "file.png")
-else:
-    svg = np.zeros(ori.shape, dtype=np.uint8)
+    filter_filenames = filenames
 
-# plot masks on img and svg
-for i, cl in enumerate(classes.values()):
-    
-    ag = st.sidebar.checkbox(cl, value= cl in known_classes)
-    if ag == True:
-        tmp_mask = np.zeros(img.shape, dtype=np.uint8)
-        tmp_mask[mask[i] > 0] = palette[i]
-        img[mask[i] > 0] = img[mask[i] > 0]//2 + tmp_mask[mask[i] > 0]//2
-        svg[mask[i] > 0] = svg[mask[i] > 0]//2 + tmp_mask[mask[i] > 0]//2
+if len(filter_filenames) == 0:
+    not_found = "vis_utils/images/hqdefault.jpg"
+    st.image(not_found)
+else:    
+    # select diamond
+    diamond = st.selectbox(
+        'Choose a Diamond',
+        filter_filenames)
 
-col1, col2 = st.columns(2) 
+    # constant to work juxtapose
+    id = filenames.index(diamond)
+    unique_img_id = 0
 
-# Original image on the left
-with col1:
-    st.header("Original")
-    st.image(img)
-# SVG image on the right    
-with col2:
-    st.header("SVG")
-    st.image(svg)
+    # take img and masks
+    img     = np.array(Image.open(img_dir + '/' + diamond + '/' + "Darkfield_EF.jpg"))
+    mask    = get_mask(Path(img_dir + '/' + diamond), classes_id)
+    labels  = get_labels(Path(img_dir + '/' + diamond), classes)
+        
+    # labels
+    st.text('In this diamond there are: ' + ', '.join(str(l) for l in labels))
+
+    # sidebar
+    st.sidebar.title("Masks")
+
+    # svg
+    svg  = np.array(Image.open(img_dir + '/' + diamond + '/' + "file.png"))
+
+    # plot masks on img
+    for i, cl in enumerate(classes.values()):
+
+        ag = st.sidebar.checkbox(cl, value= cl in known_classes)
+        if ag == True:
+            tmp_mask = np.zeros(img.shape, dtype=np.uint8)
+            tmp_mask[mask[i] > 0] = palette[i]
+            img[mask[i] > 0] = img[mask[i] > 0]//2 + tmp_mask[mask[i] > 0]//2
+            unique_img_id += 2**i
+
+
+    # juxtapose
+    img1 = Image.fromarray(img)
+    img1.save(STREAMLIT_STATIC_PATH / "ori_mask_{}_{}.png".format(id, unique_img_id))
+    img2 = Image.fromarray(svg)
+    img2.save(STREAMLIT_STATIC_PATH / "svg_{}_{}.png".format(id, unique_img_id))
+
+    juxtapose("ori_mask_{}_{}.png".format(id, unique_img_id), "svg_{}_{}.png".format(id, unique_img_id))
     

@@ -6,13 +6,14 @@ import json
 import numpy as np
 from PIL import Image
 
-def make_mask(img_dir, classes_id):
+def get_mask(img_dir, classes_id=[1, 2, 3, 4, 5, 6, 7, 9, 17, 20], small_area_size=30):
     """Args:
-        img_dir (pathlib.Path): path to single folder
+        img_dir (pathlib.Path): path to single folder with diamond files
         classes_id (list): id of classes for which the mask is parsed
+        small_area_size (int): area of small objects to dilate
     
     Returns:
-        mask as np.arrays"""
+        mask as np.arrays, format CHW"""
     
     formats = [
         'com.octonus.CInclusionRepresentationCloudFormat/1.0',
@@ -45,6 +46,7 @@ def make_mask(img_dir, classes_id):
 
         return tmp_mask
 
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     
     mask_pathes = list(img_dir.glob("*.msainclusions"))
     width, height = Image.open(img_dir / "Darkfield_EF.jpg").size
@@ -56,10 +58,34 @@ def make_mask(img_dir, classes_id):
         vals = mask_data["Data"]["data"]["inclusions"]["Values"]
         for v in vals:
             reprs = v["representations"]["Values"]
+            if v["type"] not in classes_id: continue
             mask_id  = classes_id.index(v["type"])
             tmp_mask = _extract_contour(reprs)
+            
+            if tmp_mask.sum() < small_area_size:
+                tmp_mask = cv2.dilate(tmp_mask, kernel)
+                
             mask[mask_id] |= tmp_mask
             
             
     return np.flip(mask, axis=1)
 
+def get_labels(img_dir, classes):
+    """Args:
+        img_dir (pathlib.Path): path to single folder with diamond files
+        classes (dict): a dictionary of classes we are interested in
+    
+    Returns:
+        labels: list of diamond incusions"""
+    
+    labels = set()
+    mask_pathes = list(img_dir.glob("*.msainclusions"))
+    
+    for mask_path in mask_pathes:
+        mask_data = json.load(mask_path.open())
+        vals = mask_data["Data"]["data"]["inclusions"]["Values"]
+        for v in vals:
+            reprs = v["representations"]["Values"]
+            labels.add(classes[v["type"]])
+            
+    return labels
