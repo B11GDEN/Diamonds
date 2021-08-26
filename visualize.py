@@ -62,17 +62,17 @@ options = st.multiselect(
 
 filenames = [file.split('/')[-2] for file in glob.glob("./2021-08-10-Examples/*/Darkfield_EF.jpg")]
 
-filter_filenames = []
-if len(options) > 0:
-    for filename in filenames:
-        ex = True
-        labels = get_labels(Path(img_dir + '/' + filename), classes)
-        for val in options:
-            if val not in labels:
-                ex = False
-        if ex: filter_filenames.append(filename)
-else:
-    filter_filenames = filenames
+# filter_filenames = []
+# if len(options) > 0:
+#     for filename in filenames:
+#         ex = True
+#         labels = get_labels(Path(img_dir + '/' + filename), classes)
+#         for val in options:
+#             if val not in labels:
+#                 ex = False
+#         if ex: filter_filenames.append(filename)
+# else:
+filter_filenames = filenames
 
 if len(filter_filenames) == 0:
     not_found = "vis_utils/images/hqdefault.jpg"
