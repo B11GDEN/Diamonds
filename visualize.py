@@ -7,7 +7,6 @@ import pandas as pd
 from pathlib import Path
 import glob
 from src import get_mask, get_labels
-from vis_utils import juxtapose
 
 @st.cache
 def filter_diamonds(filenames, options):

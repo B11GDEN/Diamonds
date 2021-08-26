@@ -6,11 +6,15 @@ import json
 import numpy as np
 from PIL import Image
 
-def get_mask(img_dir, classes_id=[1, 2, 3, 4, 5, 6, 7, 9, 17, 20], small_area_size=30):
+def get_mask(
+    img_dir,
+    classes_id=[1, 2, 3, 4, 5, 6, 7, 9, 17, 20],
+    dilate_kernel = (7, 7)
+):
     """Args:
         img_dir (pathlib.Path): path to single folder with diamond files
         classes_id (list): id of classes for which the mask is parsed
-        small_area_size (int): area of small objects to dilate
+        dilate_kernel (int, int): dilate kernel
     
     Returns:
         mask as np.arrays, format CHW"""
@@ -46,7 +50,7 @@ def get_mask(img_dir, classes_id=[1, 2, 3, 4, 5, 6, 7, 9, 17, 20], small_area_si
 
         return tmp_mask
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, dilate_kernel)
     
     mask_pathes = list(img_dir.glob("*.msainclusions"))
     width, height = Image.open(img_dir / "Darkfield_EF.jpg").size
@@ -61,9 +65,7 @@ def get_mask(img_dir, classes_id=[1, 2, 3, 4, 5, 6, 7, 9, 17, 20], small_area_si
             if v["type"] not in classes_id: continue
             mask_id  = classes_id.index(v["type"])
             tmp_mask = _extract_contour(reprs)
-            
-            if tmp_mask.sum() < small_area_size:
-                tmp_mask = cv2.dilate(tmp_mask, kernel)
+            tmp_mask = cv2.dilate(tmp_mask, kernel)
                 
             mask[mask_id] |= tmp_mask
             
@@ -89,3 +91,4 @@ def get_labels(img_dir, classes):
             labels.add(classes[v["type"]])
             
     return labels
+
