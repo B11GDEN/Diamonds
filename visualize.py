@@ -62,17 +62,17 @@ options = st.multiselect(
 
 filenames = [file.split('/')[-2] for file in glob.glob("./2021-08-10-Examples/*/Darkfield_EF.jpg")]
 
-# filter_filenames = []
-# if len(options) > 0:
-#     for filename in filenames:
-#         ex = True
-#         labels = get_labels(Path(img_dir + '/' + filename), classes)
-#         for val in options:
-#             if val not in labels:
-#                 ex = False
-#         if ex: filter_filenames.append(filename)
-# else:
-filter_filenames = filenames
+filter_filenames = []
+if len(options) > 0:
+    for filename in filenames:
+        ex = True
+        labels = get_labels(Path(img_dir + '/' + filename), classes)
+        for val in options:
+            if val not in labels:
+                ex = False
+        if ex: filter_filenames.append(filename)
+else:
+    filter_filenames = filenames
 
 if len(filter_filenames) == 0:
     not_found = "vis_utils/images/hqdefault.jpg"
@@ -83,10 +83,6 @@ else:
         'Choose a Diamond',
         filter_filenames)
 
-    # constant to work juxtapose
-    id = filenames.index(diamond)
-    unique_img_id = 0
-
     # take img and masks
     img     = np.array(Image.open(img_dir + '/' + diamond + '/' + "Darkfield_EF.jpg"))
     mask    = get_mask(Path(img_dir + '/' + diamond), classes_id)
@@ -94,6 +90,11 @@ else:
         
     # labels
     st.text('In this diamond there are: ' + ', '.join(str(l) for l in labels))
+    
+    # radio
+    radio = st.radio(
+    "Choose img or svg",
+    ('img', 'svg'))
 
     # sidebar
     st.sidebar.title("Masks")
@@ -109,14 +110,9 @@ else:
             tmp_mask = np.zeros(img.shape, dtype=np.uint8)
             tmp_mask[mask[i] > 0] = palette[i]
             img[mask[i] > 0] = img[mask[i] > 0]//2 + tmp_mask[mask[i] > 0]//2
-            unique_img_id += 2**i
 
-
-    # juxtapose
-    img1 = Image.fromarray(img)
-    img1.save(STREAMLIT_STATIC_PATH / "ori_mask_{}_{}.png".format(id, unique_img_id))
-    img2 = Image.fromarray(svg)
-    img2.save(STREAMLIT_STATIC_PATH / "svg_{}_{}.png".format(id, unique_img_id))
-
-    juxtapose("ori_mask_{}_{}.png".format(id, unique_img_id), "svg_{}_{}.png".format(id, unique_img_id))
+    if radio == 'img':
+        st.image(img)
+    else:
+        st.image(svg)
     
