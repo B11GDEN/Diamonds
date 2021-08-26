@@ -75,8 +75,7 @@ filenames = [file.split('/')[-2] for file in glob.glob("./2021-08-10-Examples/*/
 filter_filenames = filter_diamonds(filenames, options)
 
 if len(filter_filenames) == 0:
-    not_found = "vis_utils/images/hqdefault.jpg"
-    st.image(not_found)
+    st.title('There are no such diamonds')
 else:    
     # select diamond
     diamond = st.selectbox(
