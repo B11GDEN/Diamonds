@@ -9,12 +9,23 @@ import glob
 from src import get_mask, get_labels
 from vis_utils import juxtapose
 
-img_dir = "./2021-08-10-Examples"
+@st.cache
+def filter_diamonds(filenames, options):
+    filter_filenames = []
+    if len(options) > 0:
+        for filename in filenames:
+            ex = True
+            labels = get_labels(Path(img_dir + '/' + filename), classes)
+            for val in options:
+                if val not in labels:
+                    ex = False
+            if ex: filter_filenames.append(filename)
+    else:
+        filter_filenames = filenames
+        
+    return filter_filenames
 
-# at venv/lib/python3.9/site-packages/streamlit/static
-STREAMLIT_STATIC_PATH = (
-    Path(st.__path__[0]) / "static"
-)  
+img_dir = "./2021-08-10-Examples"
 
 known_classes = ["Internal graining", "Surface graining", "Chip", "Bruise", "Twinning wisp", "Needle", "Pinpoint", "Feather", "Cloud", "Crystal"]
 
@@ -62,17 +73,7 @@ options = st.multiselect(
 
 filenames = [file.split('/')[-2] for file in glob.glob("./2021-08-10-Examples/*/Darkfield_EF.jpg")]
 
-filter_filenames = []
-if len(options) > 0:
-    for filename in filenames:
-        ex = True
-        labels = get_labels(Path(img_dir + '/' + filename), classes)
-        for val in options:
-            if val not in labels:
-                ex = False
-        if ex: filter_filenames.append(filename)
-else:
-    filter_filenames = filenames
+filter_filenames = filter_diamonds(filenames, options)
 
 if len(filter_filenames) == 0:
     not_found = "vis_utils/images/hqdefault.jpg"
@@ -111,6 +112,7 @@ else:
             tmp_mask[mask[i] > 0] = palette[i]
             img[mask[i] > 0] = img[mask[i] > 0]//2 + tmp_mask[mask[i] > 0]//2
 
+    # display img or svg
     if radio == 'img':
         st.image(img)
     else:
